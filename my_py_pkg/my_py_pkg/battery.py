@@ -8,10 +8,14 @@ from my_robot_interfaces.srv import SetLedState
 class BatteryNode(Node):
     def __init__(self):
         super().__init__("battery")
-        self.battery_state_ = 1
-        self.counter_ = 0
-        self.timer_ = self.create_timer(1.0, self.routine_example)
-        self.get_logger().info("Battery Service has been started.")
+        self.battery_state_ = "full"
+        self.last_time_battery_state_changed_ = self.get_current_time_seconds()
+        self.battery_timer_ = self.create_timer(0.1, self.check_battery_state)
+        self.get_logger().info("Battery node has been started.")
+
+    def get_current_time_seconds(self):
+        secs, nsecs = self.get_clock().now().seconds_nanoseconds()
+        return secs + nsecs / 100000000.0
     
     def call_set_led_server(self, led_number, state):
         client = self.create_client(SetLedState, "set_led")
@@ -28,23 +32,24 @@ class BatteryNode(Node):
     def callback_call_set_led(self, future, led_number, state):
         try:
             response = future.result()
-            self.get_logger().info(f"REQUEST = led_number: {str(led_number)}, state: {state} / RESPONSE = Success: {response.success}")
-            if response.success:
-                self.battery_state_ = state
+            self.get_logger().info(str(response.success))
         except Exception as e:
             self.get_logger().error(f"Service call failed {e}")
 
-    def routine_example(self):
-        if self.battery_state_ == True and self.counter_ == 6:
-            self.call_set_led_server(led_number=3, state=False)
-            self.counter_ = 0
-        elif self.battery_state_ == False and self.counter_ == 4:
-            self.call_set_led_server(led_number=3, state=True)
-            self.counter_ = 0
+    def check_battery_state(self):
+        time_now = self.get_current_time_seconds()
+        if self.battery_state_ == "full":
+            if time_now - self.last_time_battery_state_changed_ > 4.0:
+                self.battery_state_ = "empty"
+                self.get_logger().info("Battery is empty! Charging battery...")
+                self.last_time_battery_state_changed_ = time_now
+                self.call_set_led_server(3, 1)
         else:
-            self.counter_ += 1
-        
-        self.get_logger().info(f"counter {self.counter_}")
+            if time_now - self.last_time_battery_state_changed_ > 6.0:
+                self.battery_state_ = "full"
+                self.get_logger().info("Battery is now full again.")
+                self.last_time_battery_state_changed_ = time_now
+                self.call_set_led_server(3, 0)
 
 def main(args=None):
     rclpy.init(args=args)

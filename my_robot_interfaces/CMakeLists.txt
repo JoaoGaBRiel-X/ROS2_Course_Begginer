@@ -14,9 +14,9 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/HardwareStatus.msg"
+  "msg/LedStateArray.msg"
   "srv/ComputeRetangleArea.srv"
   "srv/SetLedState.srv"
-  "msg/ViewLedState.msg"
 )
 
 ament_export_dependencies(rosidl_default_runtime)

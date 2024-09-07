@@ -3,39 +3,42 @@ import rclpy
 from rclpy.node import Node
 
 from my_robot_interfaces.srv import SetLedState
-from my_robot_interfaces.msg import ViewLedState
+from my_robot_interfaces.msg import LedStateArray
 
 class LedPanelNode(Node):
     def __init__(self):
         super().__init__("led_panel")
-        self.led1_ = False
-        self.led2_ = False
-        self.led3_ = False
-        self.server_ = self.create_service(SetLedState, "set_led", self.callback_set_led)
-        self.led_panel_state_ = self.create_publisher(ViewLedState, "led_panel_state", 10)
-        self.get_logger().info("Led Panel has been started.")
+        self.led_states_ = [0, 0, 0]
+        self.set_led_service_ = self.create_service(SetLedState, "set_led", self.callback_set_led)
+        self.led_panel_state_ = self.create_publisher(LedStateArray, "led_panel_state", 10)
+        self.get_logger().info("LED Panel node has been started.")
+
+    def publish_led_states(self):
+        msg = LedStateArray()
+        msg.led_states = self.led_states_
+        self.led_panel_state_.publish(msg)
+
 
     def callback_set_led(self, request, response):
-        if request.led_number == 1:
-            self.led1_ = request.state
-            response.success = True
-        elif request.led_number == 2:
-            self.led2_ = request.state
-            response.success = True
-        elif request.led_number == 3:
-            self.led3_ = request.state
-            response.success = True
-        else:
+        led_number = request.led_number
+        state = request.state
+
+        if led_number > len(self.led_states_) or led_number <= 0:
             response.success = False
-        
-        if response.success:
-            msg = ViewLedState()
-            msg.led1 = self.led1_
-            msg.led2 = self.led2_
-            msg.led3 = self.led3_
-            self.led_panel_state_.publish(msg)
+            
+            return response
+
+        if state not in [0,1]:
+            response.success = False
+            
+            return response
+
+        self.led_states_[led_number - 1] = state
+        response.success = True
+        self.publish_led_states()
 
         return response
+    
 
 def main(args=None):
     rclpy.init(args=args)
