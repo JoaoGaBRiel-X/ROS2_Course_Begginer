@@ -7,7 +7,7 @@ from example_interfaces.msg import Int64
 class NumberPublisherNode(Node):
     def __init__(self):
         super().__init__("number_publisher")
-        self.declare_parameter("number_to_publish", 2)
+        self.declare_parameter("number_to_publish", 29)
         self.declare_parameter("publish_frequency", 1.0)
 
         self.number_ = self.get_parameter("number_to_publish").value
